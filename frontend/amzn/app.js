@@ -6,7 +6,7 @@
 // ============================================================================
 // 1. Cấu hình URL Backend (Sửa dòng này khi deploy lên Render)
 // ============================================================================
-const API_BASE_URL = "http://127.0.0.1:8000"; // TODO: đổi thành URL Render sau khi backend deploy xong
+const API_BASE_URL = "https://a06-rnn-api.onrender.com";
 
 // Trang này chỉ phục vụ riêng 1 tài sản — không hiển thị bộ chọn 3 tài sản
 const FIXED_ASSET_ID = "amzn";
