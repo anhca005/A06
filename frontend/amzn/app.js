@@ -361,8 +361,8 @@ async function runPrediction() {
   if (!state.selectedAssetId || !state.historyData) return;
 
   const daysAhead = parseInt(state.daysAhead, 10);
-  if (isNaN(daysAhead) || daysAhead < 1 || daysAhead > 30) {
-    showError("Giá trị không hợp lệ", "Số ngày dự đoán phải nằm trong khoảng từ 1 đến 30.");
+  if (isNaN(daysAhead) || daysAhead < 1 || daysAhead > 7) {
+    showError("Giá trị không hợp lệ", "Số ngày dự đoán phải nằm trong khoảng từ 1 đến 7.");
     return;
   }
 
@@ -660,7 +660,7 @@ function renderPredictionTable(predictionResult) {
 function setDaysAhead(days) {
   let val = parseInt(days, 10);
   if (isNaN(val)) val = 5;
-  val = Math.min(30, Math.max(1, val));
+  val = Math.min(7, Math.max(1, val));
 
   state.daysAhead = val;
   DOM.daysAheadSlider.value = val;

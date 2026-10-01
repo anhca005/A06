@@ -89,8 +89,9 @@ trị đó vào cuối chuỗi, bỏ điểm cũ nhất ra, dự đoán bước 
 ```json
 { "days_ahead": 5 }
 ```
-- `days_ahead`: số nguyên, mặc định `5`, giới hạn `1..30`. Nếu client không gửi body, dùng
-  mặc định.
+- `days_ahead`: số nguyên, mặc định `5`, giới hạn `1..7`. Nếu client không gửi body, dùng
+  mặc định. (Giảm từ `1..30` xuống `1..7` vì dự đoán đệ quy nhiều bước hội tụ thành đường
+  thẳng kém thực tế khi đi xa — giữ phạm vi ngắn để kết quả còn ý nghĩa tham khảo.)
 
 **Response 200**
 ```json
@@ -119,7 +120,7 @@ trị đó vào cuối chuỗi, bỏ điểm cũ nhất ra, dự đoán bước 
 - `predicted_price` đã được `scaler.inverse_transform()` về đúng đơn vị gốc (USD hoặc
   USD/Ounce), KHÔNG trả giá trị đã chuẩn hoá (0..1).
 
-**Response 422** nếu `days_ahead` ngoài khoảng 1..30, hoặc 404 nếu `asset_id` sai, theo
+**Response 422** nếu `days_ahead` ngoài khoảng 1..7, hoặc 404 nếu `asset_id` sai, theo
 đúng format lỗi chuẩn của FastAPI (`{"detail": "..."}`).
 
 ---

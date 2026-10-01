@@ -21,7 +21,7 @@ class HistoryResponse(BaseModel):
 
 
 class PredictRequest(BaseModel):
-    days_ahead: int = Field(default=5, ge=1, le=30)
+    days_ahead: int = Field(default=5, ge=1, le=7)
 
 
 class PredictionPoint(BaseModel):

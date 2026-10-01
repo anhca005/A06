@@ -131,17 +131,16 @@
         </div>
 
         <div class="slider-group">
-          <input type="range" id="daysAheadSlider" min="1" max="30" value="5" step="1" class="days-slider" aria-label="Số phiên dự đoán">
-          <input type="number" id="daysAheadInput" min="1" max="30" value="5" class="days-number-input" aria-label="Nhập số ngày dự đoán">
+          <input type="range" id="daysAheadSlider" min="1" max="7" value="5" step="1" class="days-slider" aria-label="Số phiên dự đoán">
+          <input type="number" id="daysAheadInput" min="1" max="7" value="5" class="days-number-input" aria-label="Nhập số ngày dự đoán">
         </div>
 
         <!-- Quick Select Chips -->
         <div class="quick-chips">
+          <button type="button" class="chip-btn" data-days="1">1 phiên</button>
           <button type="button" class="chip-btn" data-days="3">3 phiên</button>
           <button type="button" class="chip-btn active" data-days="5">5 phiên</button>
           <button type="button" class="chip-btn" data-days="7">7 phiên</button>
-          <button type="button" class="chip-btn" data-days="14">14 phiên</button>
-          <button type="button" class="chip-btn" data-days="30">30 phiên</button>
         </div>
 
         <!-- Predict Action Button -->
