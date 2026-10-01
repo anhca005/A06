@@ -58,3 +58,4 @@ Vì đây là web tĩnh 100% không cần build step, việc deploy lên GitHub 
 Backend triển khai trên Render gói miễn phí (Free Tier) sẽ tự động "ngủ" sau một khoảng thời gian không có lượt truy cập.
 - Khi người dùng gửi request đầu tiên, backend có thể mất **30–60 giây** để khởi động lại máy chủ (Spin-up).
 - Giao diện đã được thiết kế sẵn thông báo thân thiện và thanh trạng thái tự động hiển thị để người dùng biết máy chủ đang thức giấc, tránh tình trạng tưởng nhầm trang bị treo.
+
