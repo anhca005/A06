@@ -750,9 +750,44 @@ function escapeHtml(str) {
 }
 
 // ============================================================================
-// 14. Khởi chạy Ứng dụng
+// 14. Tự động làm mới giá live (khớp cache 60s của backend)
+// ============================================================================
+const LIVE_REFRESH_INTERVAL_MS = 60000;
+
+async function refreshLivePriceQuietly() {
+  if (!state.selectedAssetId || state.isLoadingHistory || state.isLoadingPredict) return;
+
+  try {
+    const data = await apiFetch(`/api/history/${state.selectedAssetId}?limit=200`);
+    if (!data || !Array.isArray(data.dates) || !Array.isArray(data.prices)) return;
+
+    state.historyData = data;
+
+    const len = data.prices.length;
+    if (len > 0) {
+      DOM.activeAssetLatestPrice.textContent = formatCurrency(data.prices[len - 1]);
+      DOM.activeAssetLatestDate.textContent = `Phiên gần nhất: ${data.dates[len - 1]}`;
+    }
+
+    // Giữ nguyên đường dự đoán đang xem (nếu có) thay vì vẽ lại biểu đồ trắng,
+    // để không làm gián đoạn người dùng đang xem kết quả dự đoán.
+    if (state.predictionData) {
+      updateChartWithPredictions(data, state.predictionData);
+    } else {
+      renderChart(data.dates, data.prices, data.unit);
+    }
+  } catch (err) {
+    // Làm mới nền âm thầm — không hiện banner lỗi, chỉ log, tránh làm phiền
+    // người dùng vì một lần làm mới nền thất bại (sẽ tự thử lại lần sau).
+    console.warn("Auto-refresh giá live thất bại:", err.message);
+  }
+}
+
+// ============================================================================
+// 15. Khởi chạy Ứng dụng
 // ============================================================================
 document.addEventListener("DOMContentLoaded", () => {
   setDaysAhead(5);
   loadAssets();
+  setInterval(refreshLivePriceQuietly, LIVE_REFRESH_INTERVAL_MS);
 });
