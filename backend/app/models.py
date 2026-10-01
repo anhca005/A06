@@ -16,9 +16,9 @@ ASSET_CONFIG = {
         "price_column": "Close",
         "date_column": "Date",
         "csv": ASSETS_DIR / "amzn" / "AMZN.csv",
-        "model": ASSETS_DIR / "amzn" / "gru_amzn.keras",
+        "model": ASSETS_DIR / "amzn" / "gru_amzn.tflite",
         "scaler": ASSETS_DIR / "amzn" / "scaler.pkl",
-        "model_kind": "keras",
+        "model_kind": "tflite",
     },
     "gold": {
         "name": "Vàng",
@@ -28,9 +28,9 @@ ASSET_CONFIG = {
         "price_column": "price",
         "date_column": "date",
         "csv": ASSETS_DIR / "gold" / "gold_price.csv",
-        "model": ASSETS_DIR / "gold" / "best_model_Vàng.keras",
+        "model": ASSETS_DIR / "gold" / "best_model_Vang.tflite",
         "scaler": ASSETS_DIR / "gold" / "scaler_Vàng.pkl",
-        "model_kind": "keras",
+        "model_kind": "tflite",
     },
     "silver": {
         "name": "Bạc",
@@ -50,12 +50,16 @@ ASSET_CONFIG = {
 @lru_cache(maxsize=3)
 def load_model(asset_id: str) -> Any:
     config = ASSET_CONFIG[asset_id]
-    if config["model_kind"] == "keras":
-        # Import lazily: health/history and the PyTorch model do not require TF startup,
-        # and TF's import footprint is large enough to matter on a 512MB instance.
-        from tensorflow.keras.models import load_model as keras_load_model
+    if config["model_kind"] == "tflite":
+        # Full TensorFlow's import footprint alone (300MB+) OOM-crashed the process on
+        # Render's 512MB free tier. The Keras models were converted offline to .tflite
+        # (fixed batch size 1, verified bit-identical predictions) and are served here
+        # via ai-edge-litert, a lightweight interpreter that never imports tensorflow.
+        from ai_edge_litert.interpreter import Interpreter
 
-        return keras_load_model(config["model"], compile=False)
+        interpreter = Interpreter(model_path=str(config["model"]))
+        interpreter.allocate_tensors()
+        return interpreter
 
     # PyTorch is also imported lazily, for the same memory reason.
     import torch

@@ -41,9 +41,13 @@ def predict_next_n(asset_id: str, days_ahead: int) -> dict:
     predicted_prices: list[float] = []
 
     for _ in range(days_ahead):
-        model_input = sequence.reshape(1, sequence_length, 1)
-        if config["model_kind"] == "keras":
-            pred_scaled = float(model.predict(model_input, verbose=0)[0, 0])
+        model_input = sequence.reshape(1, sequence_length, 1).astype(np.float32)
+        if config["model_kind"] == "tflite":
+            input_detail = model.get_input_details()[0]
+            output_detail = model.get_output_details()[0]
+            model.set_tensor(input_detail["index"], model_input)
+            model.invoke()
+            pred_scaled = float(model.get_tensor(output_detail["index"])[0, 0])
         else:
             import torch
 
