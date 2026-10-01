@@ -1,0 +1,9 @@
+{
+    "sequence_length": 60,
+    "feature": "Close",
+    "input_shape": [
+        60,
+        1
+    ],
+    "target": "Close"
+}

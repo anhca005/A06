@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dự Đoán Giá Tài Sản — Mô Hình Học Sâu RNN / GRU</title>
+  <meta name="description" content="Trang web phân tích biểu đồ giá lịch sử và dự đoán xu hướng giá cổ phiếu Amazon, Vàng, Bạc bằng mô hình học sâu Keras GRU, LSTM và PyTorch RNN.">
+  
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Header / Navigation Bar -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+            <polyline points="16 7 22 7 22 13"></polyline>
+          </svg>
+        </div>
+        <div>
+          <h1 class="brand-title">Dự Đoán Giá Tài Sản <span class="badge-ai">Deep Learning</span></h1>
+          <p class="brand-subtitle">Hệ thống phân tích giá lịch sử &amp; dự báo xu hướng với Keras GRU, LSTM &amp; PyTorch RNN</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- Server Status Indicator -->
+        <div class="server-status" id="serverStatusBadge" title="Trạng thái máy chủ backend">
+          <span class="status-dot dot-connecting" id="statusDot"></span>
+          <span class="status-text" id="statusText">Đang kiểm tra kết nối...</span>
+        </div>
+
+        <!-- Backend URL Config modal trigger -->
+        <button type="button" class="btn-icon" id="btnConfigApi" title="Cấu hình URL Backend">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="main-container">
+    <!-- API Error / Notification Banner -->
+    <div class="alert-banner hidden" id="alertBanner" role="alert">
+      <div class="alert-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+      </div>
+      <div class="alert-content">
+        <div class="alert-title" id="alertTitle">Lỗi kết nối API</div>
+        <div class="alert-message" id="alertMessage">Không thể kết nối đến máy chủ.</div>
+      </div>
+      <button type="button" class="alert-btn-retry" id="alertRetryBtn">Thử lại</button>
+      <button type="button" class="alert-close" id="alertCloseBtn" aria-label="Đóng">&times;</button>
+    </div>
+
+    <!-- Server Cold-Start Notice (Hiển thị khi chờ lâu) -->
+    <div class="server-wake-notice hidden" id="serverWakeNotice">
+      <div class="spin-icon"></div>
+      <div class="wake-text">
+        <strong>Đang khởi động máy chủ backend...</strong>
+        <span>Vì máy chủ backend chạy trên gói miễn phí Render, có thể mất <strong>30–60 giây</strong> để phản hồi ở lượt gọi đầu tiên sau khi ngủ đông. Vui lòng kiên nhẫn trong giây lát!</span>
+      </div>
+    </div>
+
+    <!-- Section 1: Chọn tài sản (Asset Selector) -->
+    <section class="section-assets" aria-label="Chọn tài sản phân tích">
+      <div class="section-header">
+        <h2 class="section-title">
+          <span class="step-num">1</span> Chọn tài sản phân tích
+        </h2>
+        <span class="section-hint">Dữ liệu được cập nhật từ bộ dữ liệu tài chính chuẩn</span>
+      </div>
+
+      <div class="assets-grid" id="assetsContainer">
+        <!-- Rendered dynamically from GET /api/assets -->
+        <div class="asset-card skeleton-card">
+          <div class="skeleton-line title"></div>
+          <div class="skeleton-line sub"></div>
+        </div>
+        <div class="asset-card skeleton-card">
+          <div class="skeleton-line title"></div>
+          <div class="skeleton-line sub"></div>
+        </div>
+        <div class="asset-card skeleton-card">
+          <div class="skeleton-line title"></div>
+          <div class="skeleton-line sub"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 2: Thông tin tổng quan & Điều khiển dự đoán -->
+    <section class="controls-panel">
+      <!-- Left: Active Asset Snapshot -->
+      <div class="asset-overview">
+        <div class="overview-meta">
+          <span class="overview-label">Tài sản đang chọn:</span>
+          <span class="overview-asset-name" id="activeAssetName">Đang tải...</span>
+        </div>
+        <div class="overview-price-row">
+          <div class="overview-price-val" id="activeAssetLatestPrice">--</div>
+          <div class="overview-price-unit" id="activeAssetUnit">USD</div>
+          <div class="overview-date-tag" id="activeAssetLatestDate">Phiên gần nhất: --</div>
+        </div>
+      </div>
+
+      <!-- Right: Prediction Controls -->
+      <div class="prediction-controls">
+        <div class="control-label-group">
+          <label for="daysAheadInput" class="control-label">
+            <span class="step-num">2</span> Số phiên dự đoán tiếp theo:
+          </label>
+          <span class="days-badge" id="daysValueDisplay">5 ngày</span>
+        </div>
+
+        <div class="slider-group">
+          <input type="range" id="daysAheadSlider" min="1" max="30" value="5" step="1" class="days-slider" aria-label="Số phiên dự đoán">
+          <input type="number" id="daysAheadInput" min="1" max="30" value="5" class="days-number-input" aria-label="Nhập số ngày dự đoán">
+        </div>
+
+        <!-- Quick Select Chips -->
+        <div class="quick-chips">
+          <button type="button" class="chip-btn" data-days="3">3 phiên</button>
+          <button type="button" class="chip-btn active" data-days="5">5 phiên</button>
+          <button type="button" class="chip-btn" data-days="7">7 phiên</button>
+          <button type="button" class="chip-btn" data-days="14">14 phiên</button>
+          <button type="button" class="chip-btn" data-days="30">30 phiên</button>
+        </div>
+
+        <!-- Predict Action Button -->
+        <button type="button" class="btn-predict" id="btnPredict">
+          <span class="btn-spinner hidden" id="predictSpinner"></span>
+          <svg class="btn-icon-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"></path>
+          </svg>
+          <span id="predictBtnText">Chạy dự đoán mô hình</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Section 3: Biểu đồ giá trực quan (Chart.js) -->
+    <section class="section-chart" aria-label="Biểu đồ giá tài sản">
+      <div class="chart-header">
+        <div>
+          <h2 class="chart-title" id="chartTitle">Biểu đồ giá lịch sử</h2>
+          <p class="chart-subtitle" id="chartSubtitle">200 phiên gần nhất (Dữ liệu thực tế)</p>
+        </div>
+
+        <div class="chart-legend-custom">
+          <div class="legend-item">
+            <span class="legend-line line-history"></span>
+            <span>Giá lịch sử thật (200 phiên)</span>
+          </div>
+          <div class="legend-item" id="legendPredictionItem" style="display: none;">
+            <span class="legend-line line-prediction"></span>
+            <span>Dự đoán AI (Nối tiếp)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chart Canvas Wrapper -->
+      <div class="chart-container" id="chartWrapper">
+        <canvas id="priceChart"></canvas>
+
+        <!-- Chart Loading Overlay -->
+        <div class="chart-overlay hidden" id="chartLoadingOverlay">
+          <div class="loader-spinner"></div>
+          <div class="loader-text" id="chartLoaderText">Đang tải dữ liệu lịch sử...</div>
+        </div>
+      </div>
+
+      <!-- Financial Notice / Explanatory Note -->
+      <div class="chart-footnote">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="16" x2="12" y2="12"></line>
+          <line x1="12" y1="8" x2="12.01" y2="8"></line>
+        </svg>
+        <span>
+          <strong>Lưu ý:</strong> Các điểm dự đoán biểu diễn các phiên giao dịch kế tiếp (dự báo đệ quy tuần tự từ mô hình Deep Learning) và được nối tiếp trực tiếp sau phiên thực tế gần nhất. Ngày hiển thị là xấp xỉ gia tăng đơn giản theo phiên.
+        </span>
+      </div>
+    </section>
+
+    <!-- Section 4: Bảng kết quả dự đoán chi tiết -->
+    <section class="section-table hidden" id="predictionTableSection" aria-label="Chi tiết kết quả dự đoán">
+      <div class="table-header">
+        <div>
+          <h2 class="table-title">Chi tiết các phiên dự đoán</h2>
+          <p class="table-subtitle">Kết quả trích xuất từ mô hình hồi quy Deep Learning</p>
+        </div>
+        <div class="prediction-stats" id="predictionQuickStats">
+          <!-- Filled by JS: Trend, Final Predicted Price, Change % -->
+        </div>
+      <!-- Cảnh báo độ tin cậy khi input vượt khoảng huấn luyện (note từ API) -->
+      <div class="prediction-warning-banner hidden" id="predictionWarningBanner" role="alert">
+        <div class="warning-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+        </div>
+        <div class="warning-content">
+          <div class="warning-title">Cảnh báo về độ tin cậy kết quả dự đoán</div>
+          <div class="warning-message" id="predictionWarningText"></div>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <div class="table-responsive">
+          <table class="data-table" id="predictionTable">
+            <thead>
+              <tr>
+                <th>Bước</th>
+                <th>Phiên / Ngày</th>
+                <th>Giá dự đoán</th>
+                <th>Thay đổi so với phiên trước</th>
+                <th>Thay đổi so với giá gốc</th>
+              </tr>
+            </thead>
+            <tbody id="predictionTableBody">
+              <!-- Dynamically populated rows -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal: Backend API Configuration -->
+  <div class="modal-backdrop hidden" id="apiConfigModal">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">Cấu hình kết nối Backend API</h3>
+        <button type="button" class="modal-close" id="modalCloseBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-desc">
+          Mặc định hệ thống kết nối tới Backend Local hoặc Render. Bạn có thể thay đổi URL API tại đây để kiểm thử:
+        </p>
+        <div class="form-group">
+          <label for="apiUrlInput" class="form-label">Base URL Backend:</label>
+          <input type="url" id="apiUrlInput" class="form-input" placeholder="http://127.0.0.1:8000">
+          <small class="form-help">Ví dụ local: <code>http://127.0.0.1:8000</code> hoặc Render: <code>https://your-service.onrender.com</code></small>
+        </div>
+        <div class="modal-btn-row">
+          <button type="button" class="btn-secondary" id="btnResetApiDefault">Khôi phục mặc định</button>
+          <button type="button" class="btn-primary" id="btnSaveApiConfig">Lưu và Kết nối lại</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="app-footer">
+    <div class="footer-container">
+      <p>A06 Web Application — Khảo sát và ứng dụng RNN / GRU / LSTM trong dự đoán chuỗi thời gian tài chính.</p>
+      <p class="footer-sub">Frontend Static Website &bull; Chart.js &bull; Vanilla JS</p>
+    </div>
+  </footer>
+
+  <!-- Application Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
