@@ -1,6 +1,13 @@
 # A06 Financial Forecaster — Frontend Web App
 
-Giao diện web tĩnh (Static Web App) trực quan hóa dữ liệu giá lịch sử và dự báo giá trong tương lai bằng mô hình Deep Learning (Keras GRU, LSTM, PyTorch Vanilla RNN) cho 3 tài sản: Cổ phiếu Amazon (AMZN), Vàng (Gold), và Bạc (Silver).
+Gồm **2 trang web tĩnh độc lập**, mỗi trang chuyên biệt cho 1 tài sản, cùng gọi chung 1 REST API backend:
+
+- `amzn/` — Dự đoán giá cổ phiếu Amazon (Keras GRU)
+- `gold/` — Dự đoán giá Vàng (Keras LSTM)
+
+`index.html` ở thư mục gốc chỉ là trang chủ liên kết tới 2 trang trên (không gọi API).
+
+Mỗi trang con có `index.html`, `app.js`, `styles.css` riêng (độc lập hoàn toàn, không chia sẻ state) — `app.js` của mỗi trang khai báo hằng số `FIXED_ASSET_ID` để chỉ tải đúng 1 tài sản từ `GET /api/assets`.
 
 ---
 
@@ -13,7 +20,7 @@ Giao diện web tĩnh (Static Web App) trực quan hóa dữ liệu giá lịch 
 ---
 
 ## 2. Cấu hình Backend URL
-Tại đầu file `app.js`, cấu hình biến `API_BASE_URL`:
+Tại đầu mỗi file `amzn/app.js` và `gold/app.js`, cấu hình biến `API_BASE_URL` (sửa riêng từng file, vì 2 trang độc lập):
 ```javascript
 const API_BASE_URL = "http://127.0.0.1:8000"; // TODO: đổi thành URL Render sau khi backend deploy xong
 ```
@@ -31,10 +38,11 @@ Mở terminal tại thư mục `frontend/` và chạy:
 # Python 3
 python -m http.server 3000
 ```
-Sau đó truy cập: [http://localhost:3000](http://localhost:3000)
+Sau đó truy cập: [http://localhost:3000](http://localhost:3000) (trang chủ), hoặc thẳng
+`http://localhost:3000/amzn/` / `http://localhost:3000/gold/`.
 
 ### Cách 2: Mở trực tiếp file `index.html`
-- Click đúp trực tiếp vào file `index.html` trên máy tính hoặc mở bằng trình duyệt (Chrome, Edge, Firefox).
+- Vào thư mục `amzn/` hoặc `gold/`, click đúp `index.html` để mở bằng trình duyệt.
 
 ---
 
@@ -42,15 +50,17 @@ Sau đó truy cập: [http://localhost:3000](http://localhost:3000)
 
 Vì đây là web tĩnh 100% không cần build step, việc deploy lên GitHub Pages rất đơn giản:
 
-1. **Cách A (Nếu repo chỉ chứa frontend):**
-   - Đẩy toàn bộ các file trong thư mục `frontend/` (`index.html`, `styles.css`, `app.js`) lên nhánh `main` của GitHub repository.
-   - Vào **Settings** của repository &rarr; mục **Pages**.
-   - Tại phần **Branch**, chọn `main` và thư mục `/ (root)`, sau đó nhấn **Save**.
-   - Sau 1-2 phút, trang web sẽ trực tiếp hoạt động tại `https://<username>.github.io/<repo-name>/`.
+Repo này dùng GitHub Actions (file `.github/workflows/deploy-pages.yml` ở gốc repo) để
+publish toàn bộ thư mục `frontend/` lên GitHub Pages mỗi khi có thay đổi trong `frontend/**`
+trên nhánh `main`. Vì `frontend/` chứa 2 thư mục con `amzn/` và `gold/`, kết quả là **2 URL
+độc lập** dưới cùng 1 domain Pages:
 
-2. **Cách B (Nếu repo chung cả backend và frontend):**
-   - Đặt thư mục `frontend` vào repo.
-   - Sử dụng GitHub Actions hoặc cấu hình Pages trỏ vào thư mục `/docs` (bằng cách copy nội dung `frontend/` sang `docs/`), hoặc dùng action `JamesIves/github-pages-deploy-action` để deploy riêng thư mục `frontend/`.
+- `https://<username>.github.io/<repo-name>/amzn/`
+- `https://<username>.github.io/<repo-name>/gold/`
+- `https://<username>.github.io/<repo-name>/` — trang chủ liên kết tới 2 trang trên.
+
+Bật Pages: **Settings &rarr; Pages &rarr; Build and deployment &rarr; Source**, chọn
+**GitHub Actions** (không chọn nhánh/thư mục thủ công).
 
 ---
 

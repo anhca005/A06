@@ -8,6 +8,9 @@
 // ============================================================================
 const API_BASE_URL = "http://127.0.0.1:8000"; // TODO: đổi thành URL Render sau khi backend deploy xong
 
+// Trang này chỉ phục vụ riêng 1 tài sản — không hiển thị bộ chọn 3 tài sản
+const FIXED_ASSET_ID = "amzn";
+
 // Hỗ trợ người dùng ghi đè nhanh qua modal cài đặt (lưu vào localStorage nếu có)
 function getActiveBaseUrl() {
   const saved = localStorage.getItem("A06_API_BASE_URL");
@@ -202,16 +205,18 @@ async function loadAssets() {
   hideError();
 
   try {
-    const assets = await apiFetch("/api/assets");
-    if (!Array.isArray(assets) || assets.length === 0) {
+    const allAssets = await apiFetch("/api/assets");
+    if (!Array.isArray(allAssets) || allAssets.length === 0) {
       throw new Error("Dữ liệu tài sản trả về không hợp lệ hoặc rỗng");
+    }
+    const assets = allAssets.filter(a => a.id === FIXED_ASSET_ID);
+    if (assets.length === 0) {
+      throw new Error(`Backend không cung cấp tài sản "${FIXED_ASSET_ID}"`);
     }
     state.assets = assets;
     renderAssetTabs(assets);
 
-    // Mặc định chọn tài sản đầu tiên (amzn)
-    const initialAssetId = assets[0].id;
-    selectAsset(initialAssetId);
+    selectAsset(FIXED_ASSET_ID);
   } catch (err) {
     console.error("Lỗi loadAssets:", err);
     showError("Không thể tải danh sách tài sản", err.message, () => loadAssets());
