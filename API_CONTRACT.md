@@ -106,11 +106,13 @@ trị đó vào cuối chuỗi, bỏ điểm cũ nhất ra, dự đoán bước 
   "note": null
 }
 ```
-- `note` (string hoặc `null`): CHỈ khác `null` khi giá đầu vào hiện tại nằm ngoài khoảng dữ
-  liệu mà scaler/model của tài sản đó được huấn luyện (đã xảy ra thật với `amzn` — xem ghi
-  chú dưới). Khi `note` khác `null`, **frontend PHẢI hiển thị rõ ràng** dòng cảnh báo này
-  cho người dùng (ví dụ banner màu vàng phía trên bảng kết quả dự đoán), không được bỏ qua
-  hay chỉ log ra console — đây là cảnh báo về độ tin cậy của kết quả, người dùng cần biết.
+- `note` (string hoặc `null`): khác `null` trong 2 trường hợp — (1) giá đầu vào hiện tại nằm
+  ngoài khoảng dữ liệu mà scaler/model được huấn luyện (hiếm gặp sau khi đã retrain trên dữ
+  liệu live đến hiện tại, nhưng vẫn giữ làm lưới an toàn), hoặc (2) với `amzn`/`gold`, không
+  lấy được giá trực tuyến từ Yahoo Finance lúc đó nên hệ thống đang dùng dữ liệu CSV nội bộ
+  (có thể không phải phiên gần nhất thật). Khi `note` khác `null`, **frontend PHẢI hiển thị
+  rõ ràng** dòng cảnh báo này cho người dùng (ví dụ banner màu vàng phía trên bảng kết quả dự
+  đoán), không được bỏ qua hay chỉ log ra console.
 - `date` của mỗi điểm dự đoán = ngày lịch tăng dần +1 ngày mỗi bước kể từ
   `last_known_date` (xấp xỉ đơn giản, KHÔNG cần loại trừ cuối tuần/ngày lễ — ghi chú rõ
   trong UI rằng đây là "phiên kế tiếp", không phải ngày dương lịch chính xác).
@@ -165,9 +167,38 @@ model.eval()
 Dữ liệu CSV có thể có dòng `price` rỗng (NaN) — khi đọc lịch sử phải `dropna()` trên cột
 giá trước khi lấy `sequence_length` điểm cuối, đúng như cách notebook gốc xử lý.
 
-**Lưu ý đã phát hiện khi kiểm thử thật:** scaler của `amzn` (`scaler.pkl`) được fit trên
-khoảng giá $0.07–$94.93, nhưng `AMZN.csv` đi kèm có giá thực tới ~$186 (bao gồm dữ liệu gần
-đây hơn) — đây là lệch dữ liệu từ lúc export model, không phải lỗi code. Backend đã tự xử lý
-bằng cách **clip giá trị đầu vào về đúng khoảng scaler đã fit** trước khi chuẩn hoá, và trả
-về field `note` giải thích khi việc này xảy ra (xem mục 4). Gold/Silver không gặp vấn đề
-này (scaler khớp đúng 100% với CSV tương ứng).
+**Lịch sử phát hiện & đã vá:** bản đầu tiên của scaler `amzn` được fit trên khoảng giá
+$0.07–$94.93, trong khi `AMZN.csv` đi kèm có giá thực tới ~$186 — lệch dữ liệu từ lúc export
+model gốc. Backend từng xử lý tạm bằng cách clip giá trị đầu vào về đúng khoảng scaler đã
+fit (field `note` cảnh báo khi việc này xảy ra). Vấn đề này **đã được giải quyết triệt để**
+bằng cách train lại cả 2 model `amzn` và `gold` trên dữ liệu giá thật lấy từ Yahoo Finance
+(`yfinance`, ticker `AMZN` và `GC=F`) với scaler fit trên toàn bộ khoảng giá — cơ chế clip
+vẫn được giữ lại làm lưới an toàn cho tương lai, không xoá khỏi code.
+
+**Lấy giá live (mục 7):** `amzn` và `gold` giờ fetch giá thật mỗi lần gọi API (cache 60 giây,
+xem mục 7) thay vì đọc cố định từ CSV tĩnh — nên "giá gần nhất" luôn là phiên giao dịch gần
+nhất thật, không bị "đóng băng" ở ngày export model nữa. `silver` vẫn dùng CSV tĩnh (không có
+nguồn live được cấu hình, không có web riêng theo yêu cầu hiện tại).
+
+---
+
+## 7. Cơ chế lấy giá live (`app/live_data.py`)
+
+`amzn` và `gold` lấy dữ liệu qua thư viện `yfinance` (ticker `AMZN` và `GC=F` — hợp đồng
+tương lai vàng COMEX, giá theo USD/Ounce):
+
+1. Mỗi lần `read_asset_data(asset_id)` được gọi (từ cả `/api/history` và
+   `/api/predict`), hệ thống thử lấy dữ liệu live trước.
+2. Kết quả được **cache trong bộ nhớ 60 giây** (`CACHE_TTL_SECONDS` trong
+   `live_data.py`) — tránh gọi Yahoo Finance liên tục trên mỗi request, giảm độ trễ
+   và rủi ro bị rate-limit/chặn IP server.
+3. Nếu fetch live thất bại (lỗi mạng, Yahoo chặn, response rỗng...): dùng lại cache
+   cũ nếu còn (dù đã quá 60s), nếu không có cache nào thì fallback về file CSV tĩnh
+   trong `app/assets/<asset>/`. Field `note` trong response `/api/predict` sẽ báo rõ
+   khi đang dùng dữ liệu CSV nội bộ thay vì giá live.
+4. `silver` không có ticker live được cấu hình trong `LIVE_TICKERS`, nên luôn đọc từ
+   CSV tĩnh (hành vi không đổi).
+
+Vì cơ chế này chạy ở cấp `read_asset_data()`, nó áp dụng cho cả lịch sử giá
+(`/api/history`) lẫn dữ liệu đầu vào dùng để dự đoán (`/api/predict`) — cả 2 đều
+dùng chung 1 nguồn dữ liệu nhất quán trong cùng 1 request.

@@ -3,21 +3,34 @@ from datetime import timedelta
 import numpy as np
 import pandas as pd
 
+from .live_data import fetch_live_dataframe
 from .models import ASSET_CONFIG, load_model, load_scaler
 
 
-def read_asset_data(asset_id: str) -> pd.DataFrame:
+def read_asset_data(asset_id: str) -> tuple[pd.DataFrame, bool]:
+    """Return (frame, is_live). Tries a live Yahoo Finance fetch (cached 60s)
+    for amzn/gold first; falls back to the bundled static CSV on any failure
+    or for assets with no live source configured (e.g. silver)."""
     config = ASSET_CONFIG[asset_id]
+
+    live_df = fetch_live_dataframe(asset_id)
+    if live_df is not None and len(live_df) >= config["sequence_length"]:
+        frame = live_df.rename(
+            columns={"date": config["date_column"], "price": config["price_column"]}
+        )
+        return frame, True
+
     frame = pd.read_csv(config["csv"])
     frame[config["price_column"]] = pd.to_numeric(
         frame[config["price_column"]], errors="coerce"
     )
-    return frame.dropna(subset=[config["price_column"]]).copy()
+    frame = frame.dropna(subset=[config["price_column"]]).copy()
+    return frame, False
 
 
 def predict_next_n(asset_id: str, days_ahead: int) -> dict:
     config = ASSET_CONFIG[asset_id]
-    frame = read_asset_data(asset_id)
+    frame, is_live = read_asset_data(asset_id)
     sequence_length = config["sequence_length"]
     if len(frame) < sequence_length:
         raise ValueError(f"Not enough data for {asset_id}")
@@ -73,6 +86,11 @@ def predict_next_n(asset_id: str, days_ahead: int) -> dict:
             f"{fit_min:.4g}–{fit_max:.4g} {config['unit']}); giá trị đầu vào đã được "
             "giới hạn (clip) về khoảng này trước khi dự đoán, nên kết quả chỉ mang "
             "tính tham khảo, độ chính xác thấp hơn bình thường."
+        )
+    elif asset_id in ("amzn", "gold") and not is_live:
+        note = (
+            "Không lấy được giá trực tuyến từ Yahoo Finance lúc này, hệ thống đang "
+            "dùng dữ liệu nội bộ (có thể không phải phiên giao dịch gần nhất)."
         )
     return {
         "asset_id": asset_id,

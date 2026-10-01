@@ -53,7 +53,8 @@ def history(
     limit: Annotated[int, Query(ge=1, le=2000)] = 200,
 ) -> dict:
     config = require_asset(asset_id)
-    frame = read_asset_data(asset_id).tail(limit)
+    frame, _ = read_asset_data(asset_id)
+    frame = frame.tail(limit)
     dates = frame[config["date_column"]].map(
         lambda value: str(value)[:10]
     ).tolist()
