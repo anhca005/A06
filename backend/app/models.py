@@ -3,8 +3,6 @@ from pathlib import Path
 from typing import Any
 
 import joblib
-import torch
-import torch.nn as nn
 
 
 ASSETS_DIR = Path(__file__).resolve().parent / "assets"
@@ -49,25 +47,29 @@ ASSET_CONFIG = {
 }
 
 
-class VanillaRNN(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.rnn = nn.RNN(input_size=1, hidden_size=32, batch_first=True)
-        self.linear = nn.Linear(32, 1)
-
-    def forward(self, x):
-        out, _ = self.rnn(x)
-        return self.linear(out[:, -1, :])
-
-
 @lru_cache(maxsize=3)
 def load_model(asset_id: str) -> Any:
     config = ASSET_CONFIG[asset_id]
     if config["model_kind"] == "keras":
-        # Import lazily: health/history and the PyTorch model do not require TF startup.
+        # Import lazily: health/history and the PyTorch model do not require TF startup,
+        # and TF's import footprint is large enough to matter on a 512MB instance.
         from tensorflow.keras.models import load_model as keras_load_model
 
         return keras_load_model(config["model"], compile=False)
+
+    # PyTorch is also imported lazily, for the same memory reason.
+    import torch
+    import torch.nn as nn
+
+    class VanillaRNN(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.rnn = nn.RNN(input_size=1, hidden_size=32, batch_first=True)
+            self.linear = nn.Linear(32, 1)
+
+        def forward(self, x):
+            out, _ = self.rnn(x)
+            return self.linear(out[:, -1, :])
 
     model = VanillaRNN()
     state_dict = torch.load(config["model"], map_location="cpu", weights_only=True)

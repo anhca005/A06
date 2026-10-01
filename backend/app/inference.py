@@ -2,7 +2,6 @@ from datetime import timedelta
 
 import numpy as np
 import pandas as pd
-import torch
 
 from .models import ASSET_CONFIG, load_model, load_scaler
 
@@ -46,6 +45,8 @@ def predict_next_n(asset_id: str, days_ahead: int) -> dict:
         if config["model_kind"] == "keras":
             pred_scaled = float(model.predict(model_input, verbose=0)[0, 0])
         else:
+            import torch
+
             with torch.no_grad():
                 tensor = torch.tensor(model_input, dtype=torch.float32)
                 pred_scaled = float(model(tensor).item())
